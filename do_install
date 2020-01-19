@@ -1,0 +1,42 @@
+#!/bin/sh
+set -e
+
+if [ $# -lt 1 -o $# -gt 2 ]; then
+	echo "Usage: $0 destination-prefix [machine-type]" 1>&2
+	exit 1
+fi
+PREFIX="$1"
+
+if [ $# -eq 2 ]; then
+	machtype="$2"
+else
+	# get machine type
+	machtype=`awk '/^Model:/ {print $2}' /proc/hardware | tr A-Z a-z`
+	case $machtype in
+	'')
+		echo "Could not determine machine type!" 1>&2
+		exit 1
+		;;
+	atari|amiga)
+		;;
+	*)
+		echo "Unsupported machine type: $machtype" 1>&2
+		exit 1
+		;;
+	esac
+fi
+
+set -v
+install -m755 lilo/$machtype/lilo $PREFIX/sbin/lilo
+install -m755 lilo/$machtype/dumpmapfile $PREFIX/sbin
+install -m644 lilo/$machtype/loader $PREFIX/boot/loader.$machtype
+if [ ! -f $PREFIX/etc/lilo.conf ]; then
+	install -m644 lilo/$machtype/lilo.conf.example $PREFIX/etc/lilo.conf
+	echo "You have to edit /etc/lilo.conf"
+fi
+if [ "$machtype" = atari ]; then
+	install -m755 lilo/atari/bootos $PREFIX/sbin/bootos
+fi
+set +v
+
+exit 0
